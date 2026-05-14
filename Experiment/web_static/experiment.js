@@ -44,6 +44,8 @@
     trialInRun: 0,
     sessionStartTime: null,
     trialPhaseStartTime: null,
+    targetAudioEndTime: null,        // when target audio finished
+    responseTimerActive: false,      // can participant respond now?
     currentResponse: null,
     currentResponseRT: null,
     currentItiMs: 1500,
@@ -94,10 +96,44 @@
     else div.classList.add("hidden");
   }
 
-  function updateStatusBar() {
-    const total = state.runs[state.currentRun]?.length || 0;
-    $("#status-text").textContent =
-      `Run ${state.currentRun}/4 — Trial ${state.trialInRun}/${total}`;
+  function showResponseProgress(show) {
+    const div = $("#response-progress");
+    const fill = $("#response-progress-fill");
+    if (show) {
+      div.classList.remove("hidden");
+      // Reset fill (full width)
+      fill.style.transition = "none";
+      fill.classList.remove("active");
+      // Force reflow to apply the reset before transition
+      void fill.offsetWidth;
+      // Apply transition over RESPONSE_WINDOW_MS
+      fill.style.transition = `transform ${TIMING.RESPONSE_WINDOW_MS}ms linear`;
+      fill.classList.add("active");
+    } else {
+      div.classList.add("hidden");
+      fill.style.transition = "none";
+      fill.classList.remove("active");
+    }
+  }
+
+  /**
+   * Derive Latin-square form (A or B) from Participant ID.
+   * Rules:
+   * - Numeric ID: odd → A, even → B
+   * - Non-numeric: hash to A/B (deterministic per ID)
+   */
+  function deriveForm(participantId) {
+    if (!participantId) return "A";
+    const id = String(participantId).trim();
+    // Try numeric
+    const num = parseInt(id.replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(num)) {
+      return num % 2 === 1 ? "A" : "B";
+    }
+    // Hash for non-numeric: sum of char codes
+    let h = 0;
+    for (const c of id) h += c.charCodeAt(0);
+    return h % 2 === 0 ? "A" : "B";
   }
 
   function nowMs() { return performance.now(); }
@@ -224,7 +260,6 @@
       endOfRun();
     } else {
       state.trialInRun += 1;
-      updateStatusBar();
       runTrial();
     }
   }
@@ -272,19 +307,44 @@
 
   function targetPhase(item) {
     state.trialPhaseStartTime = nowMs();
+    state.targetAudioEndTime = null;
+    state.responseTimerActive = false;
+
     if (state.presentationMode !== "audio_only") {
       setTrialText(item.target_text, { target: true });
     } else {
       clearTrialText();
     }
-    if (state.presentationMode !== "text_only") {
-      const audio = $("#audio-target");
+    // Buttons hidden until audio ends (so RT measured post-audio)
+    showResponseButtons(false);
+    showResponseProgress(false);
+
+    const audio = $("#audio-target");
+
+    // Schedule response window start once audio ends
+    const onAudioEnd = () => {
+      if (state.responseTimerActive) return;  // guard
+      state.responseTimerActive = true;
+      state.targetAudioEndTime = nowMs();
+      showResponseButtons(true);
+      showResponseProgress(true);
+      scheduleNext(() => endTrialItem(item), TIMING.RESPONSE_WINDOW_MS);
+    };
+
+    if (state.presentationMode === "text_only") {
+      // No audio: start response window after TARGET_MAX_MS (text reading time)
+      scheduleNext(onAudioEnd, TIMING.TARGET_MAX_MS);
+    } else {
+      audio.onended = onAudioEnd;
+      // Fallback: if audio fails to play or never fires `ended`, force end after TARGET_MAX_MS
+      scheduleNext(() => {
+        if (!state.responseTimerActive) {
+          console.warn("Audio did not fire 'ended'; forcing response window start.");
+          onAudioEnd();
+        }
+      }, TIMING.TARGET_MAX_MS);
       loadAndPlayAudio(audio, getAudioUrl(item, "target"));
     }
-    showResponseButtons(true);
-    // Allow early response via key/button; finalize after window
-    scheduleNext(() => endTrialItem(item),
-                 TIMING.TARGET_MAX_MS + TIMING.RESPONSE_WINDOW_MS);
   }
 
   function endTrialItem(item) {
@@ -292,6 +352,7 @@
     $("#audio-target").pause();
     clearTrialText();
     showResponseButtons(false);
+    showResponseProgress(false);
 
     // Save trial
     const responseNorm = state.currentResponse === "1" ? "yes"
@@ -318,7 +379,10 @@
       expected_response: item.expected_response,
       response: responseNorm,
       response_correct: correct,
-      rt_from_target_onset_ms: state.currentResponseRT,
+      rt_from_audio_end_ms: state.currentResponseRT,
+      target_audio_end_time_ms: state.targetAudioEndTime
+        ? state.targetAudioEndTime - state.sessionStartTime
+        : null,
       iti_ms: state.currentItiMs,
       time: nowIso(),
       onset_from_session_s: sessionElapsedS(),
@@ -364,7 +428,6 @@
     state.trialInRun = 0;
     state.currentResponse = null;
     state.currentResponseRT = null;
-    updateStatusBar();
     showScreen("running");
     // Brief initial rest then first trial
     setTrialText("+", { fixation: true });
@@ -387,10 +450,12 @@
   function handleResponse(key, source) {
     if (state.phase !== "running") return;
     if (state.currentResponse !== null) return;
+    if (!state.responseTimerActive) return;  // ignore responses before audio ends
     if (key !== "1" && key !== "2") return;
 
     state.currentResponse = key;
-    state.currentResponseRT = nowMs() - state.trialPhaseStartTime;
+    // RT measured from audio end time (when participant could first respond)
+    state.currentResponseRT = nowMs() - state.targetAudioEndTime;
     const item = state.runs[state.currentRun][state.trialInRun - 1];
     logKeyEvent(item ? item.item_id : "", "target", key, source);
   }
@@ -536,11 +601,23 @@
   // Wire up
   // ============================
 
+  // Auto-derive form on participant ID change
+  $("#participant_id").addEventListener("input", (e) => {
+    const id = e.target.value.trim();
+    const hint = $("#form-hint");
+    if (id) {
+      const form = deriveForm(id);
+      hint.textContent = `→ Form ${form} (自動割当)`;
+    } else {
+      hint.textContent = "";
+    }
+  });
+
   $("#setup-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     state.participant = $("#participant_id").value.trim() ||
       new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-    state.listForm = $("#list_form").value;
+    state.listForm = deriveForm(state.participant);
     state.presentationMode = $("#presentation_mode").value;
 
     // Override timings if changed
@@ -565,7 +642,6 @@
     state.currentRun = 1;
     state.trialInRun = 0;
     showScreen("running");
-    updateStatusBar();
     setTrialText("+", { fixation: true });
     scheduleNext(() => {
       clearTrialText();
@@ -575,13 +651,6 @@
 
   $("#next-run-btn").addEventListener("click", () => startNextRun());
 
-  $("#pause-btn").addEventListener("click", () => pauseExperiment());
-  $("#abort-btn").addEventListener("click", () => {
-    if (confirm("中断して結果を保存しますか？")) {
-      clearTimer();
-      completeExperiment();
-    }
-  });
   $("#resume-btn").addEventListener("click", () => resumeExperiment());
 
   $("#btn-yes").addEventListener("click", () => handleResponse("1", "button"));
