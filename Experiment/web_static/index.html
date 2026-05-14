@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grammaticality Judgment Task (RWL)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================== -->
+<!-- Setup screen -->
+<!-- ============================== -->
+<section id="setup" class="screen">
+  <div class="container">
+    <h1>Grammaticality Judgment Task</h1>
+    <h3>Reading-While-Listening (Web Pilot)</h3>
+
+    <form id="setup-form">
+      <label>
+        参加者 ID
+        <input type="text" id="participant_id" placeholder="例: 001" required>
+      </label>
+
+      <label>
+        Latin-square Form
+        <select id="list_form">
+          <option value="A">A</option>
+          <option value="B">B</option>
+        </select>
+      </label>
+
+      <label>
+        提示モード
+        <select id="presentation_mode">
+          <option value="rwl">RWL（テキスト + 音声）</option>
+          <option value="text_only">テキストのみ</option>
+          <option value="audio_only">音声のみ</option>
+        </select>
+      </label>
+
+      <details>
+        <summary>詳細設定</summary>
+        <label>
+          Fixation 時間 (ms)
+          <input type="number" id="fixation_ms" value="500" min="100" max="2000">
+        </label>
+        <label>
+          Prime 最大時間 (ms)
+          <input type="number" id="prime_max_ms" value="3500" min="1000" max="6000">
+        </label>
+        <label>
+          Pause 時間 (ms)
+          <input type="number" id="pause_ms" value="500" min="0" max="2000">
+        </label>
+        <label>
+          Target 最大時間 (ms)
+          <input type="number" id="target_max_ms" value="2500" min="1000" max="5000">
+        </label>
+        <label>
+          Response window (ms)
+          <input type="number" id="response_window_ms" value="2500" min="500" max="5000">
+        </label>
+        <label>
+          ITI 最小 (ms)
+          <input type="number" id="iti_min_ms" value="500" min="0" max="5000">
+        </label>
+        <label>
+          ITI 最大 (ms)
+          <input type="number" id="iti_max_ms" value="2500" min="0" max="5000">
+        </label>
+      </details>
+
+      <button type="submit" class="primary">▶ 実験開始</button>
+    </form>
+
+    <p class="caption">
+      使い方: 各試行で画面に表示される文を読み、音声を聞きながら、
+      その文がその文脈で文法的に正しいかどうかを判断してください。<br>
+      <strong>1</strong> = 文法的に正しい / <strong>2</strong> = 正しくない<br>
+      （またはボタンをクリック）
+    </p>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Instructions screen -->
+<!-- ============================== -->
+<section id="instructions" class="screen hidden">
+  <div class="container">
+    <h2>実験の進め方</h2>
+    <p>各試行は次のように進みます:</p>
+    <ol>
+      <li><strong>場面を説明する文 (プライム)</strong> が表示され、同時に音声が流れます。</li>
+      <li>短い間。</li>
+      <li><strong>判断対象の文 (ターゲット)</strong> が表示され、同時に音声が流れます。</li>
+      <li>反応してください: <kbd>1</kbd> = 文法的 / <kbd>2</kbd> = 非文法的</li>
+    </ol>
+    <p>全 4 ラン（各 ~5 分）の実験です。各ランの開始時、「Begin Run」ボタンを押してください。</p>
+    <p class="warning">⚠️ ブラウザの自動再生ポリシーのため、最初の試行は音声が流れない場合があります。
+      「Begin Run」を押すことでオーディオが有効化されます。</p>
+    <button id="start-experiment" class="primary">▶ Begin Run 1</button>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Running screen (trial display) -->
+<!-- ============================== -->
+<section id="running" class="screen hidden">
+  <div id="trial-display"></div>
+
+  <div id="response-buttons" class="response-buttons hidden">
+    <button id="btn-yes" class="response">✅ Grammatical (1)</button>
+    <button id="btn-no" class="response">❌ Not grammatical (2)</button>
+  </div>
+
+  <div id="status-bar">
+    <span id="status-text">Run 1 / Trial 0</span>
+    <button id="pause-btn">⏸ Pause</button>
+    <button id="abort-btn">⏹ Abort + Save</button>
+  </div>
+
+  <audio id="audio-prime" preload="auto"></audio>
+  <audio id="audio-target" preload="auto"></audio>
+</section>
+
+<!-- ============================== -->
+<!-- Inter-run rest screen -->
+<!-- ============================== -->
+<section id="inter-run-rest" class="screen hidden">
+  <div class="container">
+    <h2>Run <span id="completed-run">1</span> 終了</h2>
+    <p>少し休憩してください。準備ができたら下のボタンで次のランへ。</p>
+    <p id="run-summary"></p>
+    <button id="next-run-btn" class="primary">▶ Begin Next Run</button>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Paused -->
+<!-- ============================== -->
+<section id="paused" class="screen hidden">
+  <div class="container">
+    <h2>⏸ 一時停止中</h2>
+    <button id="resume-btn" class="primary">▶ 再開</button>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Complete -->
+<!-- ============================== -->
+<section id="complete" class="screen hidden">
+  <div class="container">
+    <h1>🎉 実験終了</h1>
+    <p>お疲れさまでした。結果をダウンロードしてください。</p>
+
+    <div class="actions">
+      <button id="download-results" class="primary">📥 結果 CSV をダウンロード</button>
+      <button id="download-events">📥 キーイベント CSV をダウンロード</button>
+    </div>
+
+    <h3>結果サマリ</h3>
+    <div id="summary-table"></div>
+
+    <h3>全試行データ（最初の 20 行）</h3>
+    <div id="results-preview"></div>
+
+    <button id="new-session" class="secondary">🔄 新規セッション開始</button>
+  </div>
+</section>
+
+<!-- Error screen -->
+<section id="error-screen" class="screen hidden">
+  <div class="container">
+    <h2>⚠️ エラー</h2>
+    <p id="error-message"></p>
+  </div>
+</section>
+
+<script src="experiment.js"></script>
+</body>
+</html>

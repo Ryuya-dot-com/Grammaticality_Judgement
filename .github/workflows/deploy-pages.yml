@@ -1,0 +1,80 @@
+name: Deploy Web Experiment to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Experiment/web_static/**"
+      - "Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_master_cdm_cat_v3.csv"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas
+
+      - name: Regenerate stimuli.json from master CSV
+        run: |
+          cd Experiment/web_static
+          python convert_csv_to_json.py
+          echo "Generated stimuli.json:"
+          ls -la stimuli.json
+
+      - name: Verify static files
+        run: |
+          echo "Files in Experiment/web_static:"
+          ls -la Experiment/web_static/
+          echo "Audio files count (prime):"
+          find Experiment/web_static/audio/prime -name "*.wav" 2>/dev/null | wc -l || echo "0 (audio not committed)"
+          find Experiment/web_static/audio/prime -name "*.mp3" 2>/dev/null | wc -l || echo "0"
+          echo "Audio files count (target):"
+          find Experiment/web_static/audio/target -name "*.wav" 2>/dev/null | wc -l || echo "0"
+          find Experiment/web_static/audio/target -name "*.mp3" 2>/dev/null | wc -l || echo "0"
+
+      - name: Prepare deployment artifact
+        run: |
+          mkdir -p _site
+          cp -r Experiment/web_static/* _site/
+          # Ensure stimuli.json is fresh
+          ls -la _site/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

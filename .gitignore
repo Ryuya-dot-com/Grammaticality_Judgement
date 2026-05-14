@@ -1,0 +1,86 @@
+# =========================
+# Personal / sensitive data
+# =========================
+IRB_Komuro_2025/
+助数詞と可算性 fMRI研究_.docx
+Presentation_Komuro_*.pptx
+
+# Legacy audio bank (180 mp3s, not part of v3 design)
+audio_stimuli/
+
+# Reading materials (copyrighted PDFs)
+Reading/
+Reading_Span/
+
+# fMRI sample data (large)
+fMRI_Stimuli/
+
+# Participant data (none committed)
+results/
+logs/
+Grammaticality_Judgement_CAT/pilot/
+Grammaticality_Judgement_CAT/data/
+
+# Pre-v3 stimuli (kept locally for traceability, not part of release)
+Grammaticality_Judgement_CAT/stimuli/Stimuli_Grammaticality_Judgement_list*.csv
+Grammaticality_Judgement_CAT/stimuli/Stimuli_Grammaticality_Judgement_with_nouns.csv
+Grammaticality_Judgement_CAT/Grammaticality_Judgement.py
+Grammaticality_Judgement_CAT/Stimuli_Grammaticality_Judgement.csv
+Grammaticality_Judgement_CAT/Stimuli_Grammaticality_Judgement.xlsx
+Grammaticality_Judgement_CAT/preprocessing_script.py
+
+# Intermediate v3 draft CSVs (final master committed)
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/_v*_draft_*.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/expert_review_sheet_v1.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/family_summary_v1.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/generate_cdm_cat_stimuli.py
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/norming_form_*.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/q_matrix_cdm_cat_v1*.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_bank_*.xlsx
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_bank_metadata_*.json
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_master_cdm_cat_v1.csv
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_validation_report_*.md
+Grammaticality_Judgement_CAT/stimuli/refined_cdm_cat/stimulus_generation_protocol.md
+
+# Root-level legacy scripts and configs
+Grammaticality_Judgement.py
+Stimuli_Generator.py
+grammaticality_collocation_task.xlsx
+config.json
+
+# Experiment legacy results
+Experiment/fMRI/results_grammaticality/
+Experiment/fMRI/results/
+
+# Audio generation logs
+Experiment/web_static/tts_log.txt
+Experiment/fMRI/*.log
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# =========================
+# OS / editors
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# =========================
+# Build artifacts
+# =========================
+_site/
+node_modules/
