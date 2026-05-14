@@ -31,6 +31,44 @@
   const STIMULI_URL = "stimuli.json";
 
   // ============================
+  // Practice items (NOT overlapping with critical WFs or fillers)
+  // ============================
+  const PRACTICE_ITEMS = [
+    {
+      item_id: "PRACT1G", pair_id: "PRACT1", version: "G",
+      item_type: "practice", family_id: "PRACTICE", construct: "practice_grammatical",
+      prime_text: "In the morning, Mei felt very thirsty.",
+      target_text: "Mei drank some hot tea.",
+      expected_response: "yes",
+      explanation: "正解は「Grammatical（文法的）」。過去形 drank と some hot tea は正しい構造です。",
+    },
+    {
+      item_id: "PRACT2U", pair_id: "PRACT2", version: "U",
+      item_type: "practice", family_id: "PRACTICE", construct: "practice_ungrammatical",
+      prime_text: "At the bookstore, Ken looked at items.",
+      target_text: "Ken buy three books yesterday.",
+      expected_response: "no",
+      explanation: "正解は「Not grammatical（非文法的）」。yesterday は過去なので buy は bought に。",
+    },
+    {
+      item_id: "PRACT3G", pair_id: "PRACT3", version: "G",
+      item_type: "practice", family_id: "PRACTICE", construct: "practice_grammatical",
+      prime_text: "On the sunny afternoon, Yuki went outside.",
+      target_text: "Yuki played in the park.",
+      expected_response: "yes",
+      explanation: "正解は「Grammatical（文法的）」。過去形 played と前置詞句 in the park は正しい。",
+    },
+    {
+      item_id: "PRACT4U", pair_id: "PRACT4", version: "U",
+      item_type: "practice", family_id: "PRACTICE", construct: "practice_ungrammatical",
+      prime_text: "Every morning, Aoi exercises before school.",
+      target_text: "Aoi run to school quickly.",
+      expected_response: "no",
+      explanation: "正解は「Not grammatical（非文法的）」。三人称単数 Aoi の現在形は runs。",
+    },
+  ];
+
+  // ============================
   // State
   // ============================
   const state = {
@@ -42,6 +80,8 @@
     runs: { 1: [], 2: [], 3: [], 4: [] },
     currentRun: 1,
     trialInRun: 0,
+    inPractice: false,                // true during practice trials
+    practiceIdx: 0,                   // 0..3
     sessionStartTime: null,
     trialPhaseStartTime: null,
     targetAudioEndTime: null,        // when target audio finished
@@ -64,6 +104,7 @@
   const screens = {
     setup: $("#setup"),
     instructions: $("#instructions"),
+    "practice-complete": $("#practice-complete"),
     running: $("#running"),
     interRunRest: $("#inter-run-rest"),
     paused: $("#paused"),
@@ -264,6 +305,137 @@
     }
   }
 
+  // ============================
+  // Practice trial loop
+  // ============================
+
+  function startPractice() {
+    state.inPractice = true;
+    state.practiceIdx = 0;
+    showScreen("running");
+    setTrialText("+", { fixation: true });
+    scheduleNext(() => {
+      clearTrialText();
+      runPracticeTrial();
+    }, 1000);
+  }
+
+  function runPracticeTrial() {
+    if (state.practiceIdx >= PRACTICE_ITEMS.length) {
+      finishPractice();
+      return;
+    }
+    const item = PRACTICE_ITEMS[state.practiceIdx];
+    state.currentResponse = null;
+    state.currentResponseRT = null;
+    state.responseTimerActive = false;
+    state.targetAudioEndTime = null;
+
+    // --- Fixation ---
+    state.trialPhaseStartTime = nowMs();
+    setTrialText("+", { fixation: true });
+    showResponseButtons(false);
+    showResponseProgress(false);
+    hideFeedback();
+    scheduleNext(() => practicePrimePhase(item), TIMING.FIXATION_MS);
+  }
+
+  function practicePrimePhase(item) {
+    state.trialPhaseStartTime = nowMs();
+    setTrialText(item.prime_text);
+    if (state.presentationMode !== "text_only") {
+      const audio = $("#audio-prime");
+      loadAndPlayAudio(audio, `${AUDIO_BASE}prime/${item.pair_id}.wav`);
+    }
+    scheduleNext(() => practicePausePhase(item), TIMING.PRIME_MAX_MS);
+  }
+
+  function practicePausePhase(item) {
+    clearTrialText();
+    $("#audio-prime").pause();
+    scheduleNext(() => practiceTargetPhase(item), TIMING.PAUSE_MS);
+  }
+
+  function practiceTargetPhase(item) {
+    state.trialPhaseStartTime = nowMs();
+    state.targetAudioEndTime = null;
+    state.responseTimerActive = false;
+
+    if (state.presentationMode !== "audio_only") {
+      setTrialText(item.target_text, { target: true });
+    }
+    showResponseButtons(false);
+    showResponseProgress(false);
+
+    const audio = $("#audio-target");
+
+    const onAudioEnd = () => {
+      if (state.responseTimerActive) return;
+      state.responseTimerActive = true;
+      state.targetAudioEndTime = nowMs();
+      showResponseButtons(true);
+      showResponseProgress(true);
+      scheduleNext(() => endPracticeTrial(item), TIMING.RESPONSE_WINDOW_MS);
+    };
+
+    if (state.presentationMode === "text_only") {
+      scheduleNext(onAudioEnd, TIMING.TARGET_MAX_MS);
+    } else {
+      audio.onended = onAudioEnd;
+      scheduleNext(() => {
+        if (!state.responseTimerActive) onAudioEnd();
+      }, TIMING.TARGET_MAX_MS);
+      loadAndPlayAudio(audio, `${AUDIO_BASE}target/${item.item_id}.wav`);
+    }
+  }
+
+  function endPracticeTrial(item) {
+    clearTimer();
+    $("#audio-target").pause();
+    clearTrialText();
+    showResponseButtons(false);
+    showResponseProgress(false);
+
+    const responseNorm = state.currentResponse === "1" ? "yes"
+                       : state.currentResponse === "2" ? "no" : null;
+    const correct = responseNorm === item.expected_response;
+    showPracticeFeedback(correct, item.explanation);
+
+    // After feedback display, advance
+    scheduleNext(() => {
+      hideFeedback();
+      state.practiceIdx += 1;
+      runPracticeTrial();
+    }, 3000);  // 3 sec feedback display
+  }
+
+  function showPracticeFeedback(correct, explanation) {
+    const fb = $("#practice-feedback");
+    const icon = correct ? "✓" : "✗";
+    const label = correct ? "正解" : "不正解";
+    const color = correct ? "#4caf50" : "#f44336";
+    fb.innerHTML = `
+      <div class="feedback-icon" style="color:${color}">${icon}</div>
+      <div class="feedback-label" style="color:${color}">${label}</div>
+      <div class="feedback-explanation">${explanation}</div>
+    `;
+    fb.classList.remove("hidden");
+  }
+
+  function hideFeedback() {
+    $("#practice-feedback").classList.add("hidden");
+  }
+
+  function finishPractice() {
+    state.inPractice = false;
+    state.practiceIdx = 0;
+    clearTrialText();
+    hideFeedback();
+    showResponseButtons(false);
+    showResponseProgress(false);
+    showScreen("practice-complete");
+  }
+
   function runTrial() {
     const item = state.runs[state.currentRun][state.trialInRun - 1];
     if (!item) {
@@ -456,8 +628,19 @@
     state.currentResponse = key;
     // RT measured from audio end time (when participant could first respond)
     state.currentResponseRT = nowMs() - state.targetAudioEndTime;
-    const item = state.runs[state.currentRun][state.trialInRun - 1];
+    let item;
+    if (state.inPractice) {
+      item = PRACTICE_ITEMS[state.practiceIdx];
+    } else {
+      item = state.runs[state.currentRun][state.trialInRun - 1];
+    }
     logKeyEvent(item ? item.item_id : "", "target", key, source);
+
+    // In practice, end the trial immediately (show feedback)
+    if (state.inPractice) {
+      clearTimer();
+      endPracticeTrial(item);
+    }
   }
 
   document.addEventListener("keydown", (e) => {
@@ -638,7 +821,13 @@
   });
 
   $("#start-experiment").addEventListener("click", () => {
+    // Begin with practice trials before the main experiment
     state.sessionStartTime = nowMs();
+    startPractice();
+  });
+
+  $("#start-main").addEventListener("click", () => {
+    // After practice complete → main experiment
     state.currentRun = 1;
     state.trialInRun = 0;
     showScreen("running");
@@ -647,6 +836,10 @@
       clearTrialText();
       startNextTrialOrEndOfRun();
     }, TIMING.INITIAL_REST_MS);
+  });
+
+  $("#redo-practice").addEventListener("click", () => {
+    startPractice();
   });
 
   $("#next-run-btn").addEventListener("click", () => startNextRun());

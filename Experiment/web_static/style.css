@@ -229,6 +229,53 @@ kbd {
 }
 
 /* ============================== */
+/* Practice feedback */
+/* ============================== */
+
+.practice-feedback {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(20, 20, 20, 0.92);
+  padding: 1.5rem 3rem;
+  border-radius: 10px;
+  min-width: 360px;
+  max-width: 720px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.practice-feedback.hidden {
+  display: none;
+}
+
+.practice-feedback .feedback-icon {
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.practice-feedback .feedback-label {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+.practice-feedback .feedback-explanation {
+  font-size: 1rem;
+  color: #ddd;
+  line-height: 1.5;
+  max-width: 540px;
+}
+
+/* ============================== */
 /* Results display */
 /* ============================== */
 

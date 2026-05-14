@@ -87,12 +87,29 @@
       <li><strong>場面を説明する文 (プライム)</strong> が表示され、同時に音声が流れます。</li>
       <li>短い間。</li>
       <li><strong>判断対象の文 (ターゲット)</strong> が表示され、同時に音声が流れます。</li>
-      <li>反応してください: <kbd>1</kbd> = 文法的 / <kbd>2</kbd> = 非文法的</li>
+      <li>音声が終わったら反応してください: <kbd>1</kbd> = 文法的 / <kbd>2</kbd> = 非文法的</li>
     </ol>
-    <p>全 4 ラン（各 ~5 分）の実験です。各ランの開始時、「Begin Run」ボタンを押してください。</p>
+    <p>本実験前に <strong>4 問の練習</strong> があります。練習では正誤フィードバックを表示します。</p>
+    <p>本実験は 4 ラン（各 ~5 分）です。</p>
     <p class="warning">⚠️ ブラウザの自動再生ポリシーのため、最初の試行は音声が流れない場合があります。
-      「Begin Run」を押すことでオーディオが有効化されます。</p>
-    <button id="start-experiment" class="primary">▶ Begin Run 1</button>
+      「練習開始」を押すことでオーディオが有効化されます。</p>
+    <button id="start-experiment" class="primary">▶ 練習開始</button>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Practice complete screen -->
+<!-- ============================== -->
+<section id="practice-complete" class="screen hidden">
+  <div class="container">
+    <h2>✅ 練習終了</h2>
+    <p>練習はいかがでしたか？</p>
+    <p>これから本実験を開始します。本実験では <strong>フィードバックは表示されません</strong>。
+       音声が終わったら、できるだけ早く・正確に反応してください。</p>
+    <div class="actions">
+      <button id="start-main" class="primary">▶ 本実験開始 (Run 1)</button>
+      <button id="redo-practice" class="secondary">↻ 練習をやり直す</button>
+    </div>
   </div>
 </section>
 
@@ -109,6 +126,10 @@
 
   <div id="response-progress" class="response-progress hidden">
     <div id="response-progress-fill"></div>
+  </div>
+
+  <div id="practice-feedback" class="practice-feedback hidden">
+    <!-- Populated by JS: icon + label + explanation -->
   </div>
 
   <audio id="audio-prime" preload="auto"></audio>
