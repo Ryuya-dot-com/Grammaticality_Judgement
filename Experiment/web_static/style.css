@@ -374,6 +374,126 @@ code {
 }
 
 /* ============================== */
+/* Task overview (setup screen) */
+/* ============================== */
+
+.task-overview {
+  background: rgba(74, 158, 255, 0.06);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 8px;
+  padding: 1.2rem 1.6rem;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.task-overview h3 {
+  margin-top: 0;
+  color: #4a9eff;
+  font-size: 1.1rem;
+}
+
+.task-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.task-steps li {
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  color: #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-steps li:last-child {
+  border-bottom: none;
+}
+
+.step-time {
+  color: #888;
+  font-size: 0.85em;
+}
+
+.total-time {
+  margin-top: 0.8rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+/* ============================== */
+/* Run progress (inter-run-rest) */
+/* ============================== */
+
+.run-progress {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.run-progress-step {
+  width: 90px;
+  height: 38px;
+  background: #2a2a2a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid #444;
+}
+
+.run-progress-step.done {
+  background: linear-gradient(135deg, #43a047, #2e7d32);
+  color: white;
+  border-color: #4caf50;
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.25);
+}
+
+.run-progress-step.current {
+  background: linear-gradient(135deg, #1e88e5, #1565c0);
+  color: white;
+  border-color: #4a9eff;
+  animation: pulse-blue 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-blue {
+  0%, 100% { box-shadow: 0 0 6px rgba(74, 158, 255, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(74, 158, 255, 0.8); }
+}
+
+.run-summary {
+  font-size: 1rem;
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* ============================== */
+/* Response progress overrun (untimed) */
+/* ============================== */
+
+#response-progress-fill.overrun {
+  background: linear-gradient(to right, #f44336, #ff6b6b) !important;
+  animation: pulse-overrun 0.7s ease-in-out infinite alternate;
+  transform: scaleX(0.05) !important;
+  transition: none !important;
+}
+
+@keyframes pulse-overrun {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* ============================== */
 /* Results display */
 /* ============================== */
 

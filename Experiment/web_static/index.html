@@ -32,6 +32,14 @@
         </select>
       </label>
 
+      <label>
+        進行モード
+        <select id="experiment_mode">
+          <option value="untimed">Untimed（自分のペースで進む。推奨）</option>
+          <option value="timed">Timed（タイマー切れで自動進行。本実験再現用）</option>
+        </select>
+      </label>
+
       <details>
         <summary>詳細設定</summary>
         <label>
@@ -70,9 +78,24 @@
     <p class="caption">
       使い方: 各試行で画面に表示される文を読み、音声を聞きながら、
       その文がその文脈で文法的に正しいかどうかを判断してください。<br>
-      応答キーは <kbd>F</kbd> / <kbd>J</kbd>（参加者ごとに自動割当）<br>
-      所要時間: 約 25 分（練習 ~2 分 + 本実験 4 ラン × ~5 分）
+      応答キーは <kbd>F</kbd> / <kbd>J</kbd>（参加者ごとに自動割当）
     </p>
+
+    <div class="task-overview">
+      <h3>📋 タスク全体の流れ</h3>
+      <ol class="task-steps">
+        <li>🎧 音声チェック <span class="step-time">~1 分</span></li>
+        <li>📖 説明 <span class="step-time">~2 分</span></li>
+        <li>📝 練習 4 問（フィードバック付き）<span class="step-time">~2 分</span></li>
+        <li>▶ 本実験 Run 1 〜 Run 4（各 ~6 分、合計約 24 分）</li>
+        <li>📥 結果ダウンロード</li>
+      </ol>
+      <p class="total-time">
+        ⏱ 合計目安:
+        <span id="overview-time-untimed">Untimed: 約 25-40 分（個人ペース）</span>
+        <span id="overview-time-timed" style="display:none;">Timed: 約 30-33 分</span>
+      </p>
+    </div>
   </div>
 </section>
 
@@ -173,8 +196,13 @@
 <section id="inter-run-rest" class="screen hidden">
   <div class="container">
     <h2>Run <span id="completed-run">1</span> 終了</h2>
+
+    <div id="run-progress-bar" class="run-progress">
+      <!-- Populated by JS with Run 1 ✓ / Run 2 / Run 3 / Run 4 -->
+    </div>
+
+    <p id="run-summary" class="run-summary"></p>
     <p>少し休憩してください。準備ができたら次のランへ。</p>
-    <p id="run-summary"></p>
     <button id="next-run-btn" class="primary">▶ Begin Next Run (Space)</button>
     <p class="caption">スペースキーでも次のランを開始できます</p>
   </div>

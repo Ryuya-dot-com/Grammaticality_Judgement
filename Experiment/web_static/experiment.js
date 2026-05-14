@@ -77,6 +77,7 @@
     listForm: "A",
     keyMapping: { yes: "f", no: "j" },  // F/J counterbalance
     presentationMode: "rwl",
+    experimentMode: "untimed",          // "untimed" (default) or "timed"
     stimuli: [],
     runs: { 1: [], 2: [], 3: [], 4: [] },
     currentRun: 1,
@@ -550,7 +551,15 @@
       state.targetAudioEndTime = nowMs();
       showResponseButtons(true);
       showResponseProgress(true);
-      scheduleNext(() => endTrialItem(item), TIMING.RESPONSE_WINDOW_MS);
+      // Timed mode: auto-advance after window. Untimed: wait for response.
+      if (state.experimentMode === "timed") {
+        scheduleNext(() => endTrialItem(item), TIMING.RESPONSE_WINDOW_MS);
+      } else {
+        // Untimed: bar runs out, switch to overrun visual to keep pressure
+        setTimeout(() => {
+          if (!state.currentResponse) markProgressOverrun();
+        }, TIMING.RESPONSE_WINDOW_MS);
+      }
     };
 
     if (state.presentationMode === "text_only") {
@@ -566,6 +575,13 @@
         }
       }, TIMING.TARGET_MAX_MS);
       loadAndPlayAudio(audio, getAudioUrl(item, "target"));
+    }
+  }
+
+  function markProgressOverrun() {
+    const fill = $("#response-progress-fill");
+    if (fill && !state.currentResponse) {
+      fill.classList.add("overrun");
     }
   }
 
@@ -636,13 +652,29 @@
     const valid = runResults.filter(r => r.response_correct !== null);
     if (valid.length > 0) {
       const acc = (valid.reduce((s, r) => s + r.response_correct, 0) / valid.length * 100).toFixed(1);
-      const rts = valid.filter(r => r.response_correct === 1 && r.rt_from_target_onset_ms != null).map(r => r.rt_from_target_onset_ms);
+      const rts = valid.filter(r => r.response_correct === 1 && r.rt_from_audio_end_ms != null).map(r => r.rt_from_audio_end_ms);
       const meanRt = rts.length > 0 ? (rts.reduce((s, x) => s + x, 0) / rts.length).toFixed(0) : "—";
       $("#run-summary").textContent =
-        `Run ${state.currentRun} 結果: 正解率 ${acc}% / 平均RT ${meanRt} ms (n=${valid.length})`;
+        `Run ${state.currentRun}: 正解率 ${acc}% / 平均RT ${meanRt} ms (n=${valid.length})`;
     }
+    // Update run progress indicator (▰ × completed, ▱ × remaining)
+    renderRunProgress(state.currentRun);
     showScreen("interRunRest");
-    $("#next-run-btn").textContent = `▶ Begin Run ${state.currentRun + 1}`;
+    $("#next-run-btn").textContent = `▶ Begin Run ${state.currentRun + 1} (Space)`;
+  }
+
+  function renderRunProgress(completed) {
+    const cont = $("#run-progress-bar");
+    if (!cont) return;
+    cont.innerHTML = "";
+    for (let i = 1; i <= 4; i++) {
+      const step = document.createElement("div");
+      step.className = "run-progress-step";
+      if (i <= completed) step.classList.add("done");
+      else if (i === completed + 1) step.classList.add("current");
+      step.textContent = i <= completed ? `Run ${i} ✓` : `Run ${i}`;
+      cont.appendChild(step);
+    }
   }
 
   function startNextRun() {
@@ -701,7 +733,12 @@
     if (state.inPractice) {
       clearTimer();
       endPracticeTrial(item);
+    } else if (state.experimentMode === "untimed") {
+      // Untimed mode: advance to ITI as soon as response is given
+      clearTimer();
+      endTrialItem(item);
     }
+    // Timed mode: scheduled endTrialItem will fire after RESPONSE_WINDOW_MS regardless
   }
 
   document.addEventListener("keydown", (e) => {
@@ -880,6 +917,17 @@
     }
   });
 
+  // Toggle overview time display based on experiment mode
+  $("#experiment_mode").addEventListener("change", (e) => {
+    const isUntimed = e.target.value === "untimed";
+    const u = $("#overview-time-untimed");
+    const t = $("#overview-time-timed");
+    if (u && t) {
+      u.style.display = isUntimed ? "" : "none";
+      t.style.display = isUntimed ? "none" : "";
+    }
+  });
+
   $("#setup-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     state.participant = $("#participant_id").value.trim() ||
@@ -887,6 +935,7 @@
     state.listForm = deriveForm(state.participant);
     state.keyMapping = deriveKeyMapping(state.participant);
     state.presentationMode = $("#presentation_mode").value;
+    state.experimentMode = $("#experiment_mode").value;
 
     // Override timings if changed
     TIMING.FIXATION_MS = parseInt($("#fixation_ms").value, 10);
