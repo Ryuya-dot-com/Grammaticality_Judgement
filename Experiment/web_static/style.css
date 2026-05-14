@@ -276,6 +276,104 @@ kbd {
 }
 
 /* ============================== */
+/* Cursor hidden in running phase */
+/* ============================== */
+
+body.cursor-hidden,
+body.cursor-hidden * {
+  cursor: none !important;
+}
+
+/* ============================== */
+/* Keymap indicator (during runs) */
+/* ============================== */
+
+.keymap-indicator {
+  position: fixed;
+  bottom: 0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  color: #888;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.keymap-indicator.hidden { display: none; }
+
+.keymap-indicator .keymap-yes,
+.keymap-indicator .keymap-no {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.keymap-indicator .keymap-yes { color: #6db1ff; }
+.keymap-indicator .keymap-no { color: #ff9eb1; }
+
+/* ============================== */
+/* Instructions key-mapping box */
+/* ============================== */
+
+.instructions-keymap-box {
+  background: rgba(74, 158, 255, 0.12);
+  border-left: 3px solid #4a9eff;
+  padding: 0.8rem 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  font-size: 1.05rem;
+}
+
+/* ============================== */
+/* Email instruction (complete screen) */
+/* ============================== */
+
+.email-instruction {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  border-radius: 8px;
+  padding: 1.2rem 1.6rem;
+  margin: 1.5rem auto;
+  max-width: 640px;
+  text-align: left;
+}
+
+.email-instruction h3 {
+  margin-top: 0;
+  color: #4caf50;
+  text-align: center;
+}
+
+.email-address {
+  text-align: center;
+  font-size: 1.2rem;
+  margin: 1rem 0;
+  font-weight: 600;
+}
+
+.email-address a {
+  color: #6db1ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.email-address a:hover {
+  color: #a4ccff;
+}
+
+code {
+  background: #1a1a1a;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
+
+/* ============================== */
 /* Results display */
 /* ============================== */
 

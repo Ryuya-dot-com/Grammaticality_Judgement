@@ -75,6 +75,7 @@
     phase: "setup",
     participant: "",
     listForm: "A",
+    keyMapping: { yes: "f", no: "j" },  // F/J counterbalance
     presentationMode: "rwl",
     stimuli: [],
     runs: { 1: [], 2: [], 3: [], 4: [] },
@@ -103,6 +104,7 @@
   const $ = (sel) => document.querySelector(sel);
   const screens = {
     setup: $("#setup"),
+    "audio-check": $("#audio-check"),
     instructions: $("#instructions"),
     "practice-complete": $("#practice-complete"),
     running: $("#running"),
@@ -116,6 +118,31 @@
     Object.values(screens).forEach(s => s.classList.add("hidden"));
     if (screens[name]) screens[name].classList.remove("hidden");
     state.phase = name;
+
+    // Hide cursor during running phase (encourage keyboard-only)
+    if (name === "running") {
+      document.body.classList.add("cursor-hidden");
+      // Show small key-mapping indicator
+      updateKeymapIndicator();
+    } else {
+      document.body.classList.remove("cursor-hidden");
+      hideKeymapIndicator();
+    }
+  }
+
+  function updateKeymapIndicator() {
+    const ind = $("#keymap-indicator");
+    if (!ind) return;
+    const yK = state.keyMapping.yes.toUpperCase();
+    const nK = state.keyMapping.no.toUpperCase();
+    ind.innerHTML = `<span class="keymap-yes"><kbd>${yK}</kbd> = Grammatical</span>
+                     <span class="keymap-no"><kbd>${nK}</kbd> = Not grammatical</span>`;
+    ind.classList.remove("hidden");
+  }
+
+  function hideKeymapIndicator() {
+    const ind = $("#keymap-indicator");
+    if (ind) ind.classList.add("hidden");
   }
 
   function setTrialText(text, options = {}) {
@@ -175,6 +202,29 @@
     let h = 0;
     for (const c of id) h += c.charCodeAt(0);
     return h % 2 === 0 ? "A" : "B";
+  }
+
+  /**
+   * Derive F/J key mapping from Participant ID (independent counterbalance).
+   * Rules:
+   * - floor(id / 2) parity determines mapping
+   * - This crosses with form A/B to give a 2×2 counterbalance.
+   *   Example: 1→A, F=yes; 2→B, F=yes; 3→A, F=no; 4→B, F=no; ...
+   */
+  function deriveKeyMapping(participantId) {
+    if (!participantId) return { yes: "f", no: "j" };
+    const id = String(participantId).trim();
+    const num = parseInt(id.replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(num)) {
+      return Math.floor(num / 2) % 2 === 0
+        ? { yes: "f", no: "j" }
+        : { yes: "j", no: "f" };
+    }
+    let h = 0;
+    for (const c of id) h += c.charCodeAt(0);
+    return Math.floor(h / 2) % 2 === 0
+      ? { yes: "f", no: "j" }
+      : { yes: "j", no: "f" };
   }
 
   function nowMs() { return performance.now(); }
@@ -613,20 +663,32 @@
     showScreen("complete");
     renderResultsPreview();
     renderSummary();
+    // Auto-download results CSV
+    setTimeout(() => {
+      downloadResults();
+      // Auto-download key events too (1.5 sec after first)
+      setTimeout(() => downloadEvents(), 1500);
+    }, 500);
+    // Clear unload warning
+    state.experimentDone = true;
   }
 
   // ============================
   // Response handling
   // ============================
 
-  function handleResponse(key, source) {
+  /**
+   * Record a Grammatical / Not-grammatical response.
+   * `responseValue` is "yes" or "no" (logical, mapping-independent).
+   * `keyLabel` is the physical key pressed ("f", "j", or "button").
+   */
+  function handleResponse(responseValue, keyLabel, source) {
     if (state.phase !== "running") return;
     if (state.currentResponse !== null) return;
-    if (!state.responseTimerActive) return;  // ignore responses before audio ends
-    if (key !== "1" && key !== "2") return;
+    if (!state.responseTimerActive) return;
+    if (responseValue !== "yes" && responseValue !== "no") return;
 
-    state.currentResponse = key;
-    // RT measured from audio end time (when participant could first respond)
+    state.currentResponse = responseValue;
     state.currentResponseRT = nowMs() - state.targetAudioEndTime;
     let item;
     if (state.inPractice) {
@@ -634,9 +696,8 @@
     } else {
       item = state.runs[state.currentRun][state.trialInRun - 1];
     }
-    logKeyEvent(item ? item.item_id : "", "target", key, source);
+    logKeyEvent(item ? item.item_id : "", "target", keyLabel, source);
 
-    // In practice, end the trial immediately (show feedback)
     if (state.inPractice) {
       clearTimer();
       endPracticeTrial(item);
@@ -645,11 +706,31 @@
 
   document.addEventListener("keydown", (e) => {
     if (state.phase === "paused" || state.paused) return;
-    if (e.key === "1") {
-      handleResponse("1", "keyboard");
-    } else if (e.key === "2") {
-      handleResponse("2", "keyboard");
-    } else if (e.key === "Escape") {
+    const key = e.key.toLowerCase();
+
+    // F/J response keys (counterbalanced)
+    if (key === state.keyMapping.yes) {
+      handleResponse("yes", key, "keyboard");
+      e.preventDefault();
+    } else if (key === state.keyMapping.no) {
+      handleResponse("no", key, "keyboard");
+      e.preventDefault();
+    }
+    // Space key to advance between runs / from practice
+    else if (key === " " || e.code === "Space") {
+      if (state.phase === "interRunRest") {
+        $("#next-run-btn").click();
+        e.preventDefault();
+      } else if (state.phase === "practice-complete") {
+        $("#start-main").click();
+        e.preventDefault();
+      } else if (state.phase === "audio-check") {
+        $("#audio-check-pass").click();
+        e.preventDefault();
+      }
+    }
+    // Emergency abort
+    else if (e.key === "Escape") {
       if (confirm("実験を中断して結果を保存しますか？")) {
         clearTimer();
         completeExperiment();
@@ -784,13 +865,16 @@
   // Wire up
   // ============================
 
-  // Auto-derive form on participant ID change
+  // Auto-derive form + key mapping on participant ID change
   $("#participant_id").addEventListener("input", (e) => {
     const id = e.target.value.trim();
     const hint = $("#form-hint");
     if (id) {
       const form = deriveForm(id);
-      hint.textContent = `→ Form ${form} (自動割当)`;
+      const km = deriveKeyMapping(id);
+      hint.innerHTML = `→ Form <strong>${form}</strong> ｜ ` +
+        `<kbd>${km.yes.toUpperCase()}</kbd> = Grammatical, ` +
+        `<kbd>${km.no.toUpperCase()}</kbd> = Not grammatical (自動割当)`;
     } else {
       hint.textContent = "";
     }
@@ -801,6 +885,7 @@
     state.participant = $("#participant_id").value.trim() ||
       new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
     state.listForm = deriveForm(state.participant);
+    state.keyMapping = deriveKeyMapping(state.participant);
     state.presentationMode = $("#presentation_mode").value;
 
     // Override timings if changed
@@ -817,8 +902,24 @@
 
     const ok = await loadStimuli();
     if (!ok) return;
-    showScreen("instructions");
+    // Render key labels on response buttons + instructions
+    updateInstructionsKeyLabels();
+    showScreen("audio-check");
   });
+
+  function updateInstructionsKeyLabels() {
+    // Update button labels with the participant's key mapping
+    const yK = state.keyMapping.yes.toUpperCase();
+    const nK = state.keyMapping.no.toUpperCase();
+    $("#btn-yes").innerHTML = `✅ Grammatical <kbd>${yK}</kbd>`;
+    $("#btn-no").innerHTML = `❌ Not grammatical <kbd>${nK}</kbd>`;
+    // Update instructions text
+    const target = document.querySelector("#instructions-keymap");
+    if (target) {
+      target.innerHTML = `あなたのキー設定: <kbd>${yK}</kbd> = Grammatical（文法的） / ` +
+                         `<kbd>${nK}</kbd> = Not grammatical（非文法的）`;
+    }
+  }
 
   $("#start-experiment").addEventListener("click", () => {
     // Begin with practice trials before the main experiment
@@ -846,12 +947,44 @@
 
   $("#resume-btn").addEventListener("click", () => resumeExperiment());
 
-  $("#btn-yes").addEventListener("click", () => handleResponse("1", "button"));
-  $("#btn-no").addEventListener("click", () => handleResponse("2", "button"));
+  $("#btn-yes").addEventListener("click", () => handleResponse("yes", state.keyMapping.yes, "button"));
+  $("#btn-no").addEventListener("click", () => handleResponse("no", state.keyMapping.no, "button"));
 
   $("#download-results").addEventListener("click", downloadResults);
   $("#download-events").addEventListener("click", downloadEvents);
   $("#new-session").addEventListener("click", () => location.reload());
+
+  // beforeunload warning while experiment is running
+  window.addEventListener("beforeunload", (e) => {
+    if (state.experimentDone) return;
+    if (state.phase === "setup" || state.phase === "complete" ||
+        state.phase === "instructions" || state.phase === "error") return;
+    e.preventDefault();
+    e.returnValue = "実験が進行中です。ページを離れると進捗が失われます。よろしいですか？";
+    return e.returnValue;
+  });
+
+  // Audio test handler — verify autoplay works
+  if ($("#audio-test-button")) {
+    $("#audio-test-button").addEventListener("click", () => {
+      const a = $("#audio-test-player");
+      a.src = `${AUDIO_BASE}target/PRACT1G.wav`;
+      a.play().catch(err => {
+        console.warn("Audio test failed:", err);
+        $("#audio-test-result").innerHTML =
+          '<span style="color:#f44336">⚠ 音声が再生できませんでした。ブラウザ設定を確認してください。</span>';
+      });
+      a.onplay = () => {
+        $("#audio-test-result").innerHTML =
+          '<span style="color:#4caf50">✓ 音声が再生されました。問題なければ次へ進んでください。</span>';
+      };
+    });
+  }
+  if ($("#audio-check-pass")) {
+    $("#audio-check-pass").addEventListener("click", () => {
+      showScreen("instructions");
+    });
+  }
 
   // Init
   showScreen("setup");

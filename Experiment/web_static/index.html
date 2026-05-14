@@ -70,9 +70,32 @@
     <p class="caption">
       使い方: 各試行で画面に表示される文を読み、音声を聞きながら、
       その文がその文脈で文法的に正しいかどうかを判断してください。<br>
-      <strong>1</strong> = 文法的に正しい / <strong>2</strong> = 正しくない<br>
-      （またはボタンをクリック）
+      応答キーは <kbd>F</kbd> / <kbd>J</kbd>（参加者ごとに自動割当）<br>
+      所要時間: 約 25 分（練習 ~2 分 + 本実験 4 ラン × ~5 分）
     </p>
+  </div>
+</section>
+
+<!-- ============================== -->
+<!-- Audio check screen -->
+<!-- ============================== -->
+<section id="audio-check" class="screen hidden">
+  <div class="container">
+    <h2>🎧 音声チェック</h2>
+    <p>実験では音声を使用します。ヘッドホンを装着し、下のボタンで音声テストを行ってください。</p>
+    <p>静かな場所で、適切な音量に設定してください。</p>
+
+    <div class="actions">
+      <button id="audio-test-button" class="primary">🔊 音声をテスト再生</button>
+    </div>
+    <p id="audio-test-result" style="min-height: 1.5rem;"></p>
+
+    <audio id="audio-test-player" preload="auto"></audio>
+
+    <div class="actions">
+      <button id="audio-check-pass" class="primary">▶ 音声 OK → 次へ</button>
+    </div>
+    <p class="caption">スペースキーでも次へ進めます</p>
   </div>
 </section>
 
@@ -87,12 +110,14 @@
       <li><strong>場面を説明する文 (プライム)</strong> が表示され、同時に音声が流れます。</li>
       <li>短い間。</li>
       <li><strong>判断対象の文 (ターゲット)</strong> が表示され、同時に音声が流れます。</li>
-      <li>音声が終わったら反応してください: <kbd>1</kbd> = 文法的 / <kbd>2</kbd> = 非文法的</li>
+      <li>音声が終わってから、できるだけ早く反応してください。</li>
     </ol>
+    <p class="instructions-keymap-box" id="instructions-keymap">
+      <!-- Populated by JS with participant's mapping -->
+    </p>
     <p>本実験前に <strong>4 問の練習</strong> があります。練習では正誤フィードバックを表示します。</p>
-    <p>本実験は 4 ラン（各 ~5 分）です。</p>
-    <p class="warning">⚠️ ブラウザの自動再生ポリシーのため、最初の試行は音声が流れない場合があります。
-      「練習開始」を押すことでオーディオが有効化されます。</p>
+    <p>本実験は 4 ラン（各 ~5 分、合計 ~20 分）です。ラン間はスペースキーで進めます。</p>
+    <p class="warning">⚠️ キーボードのみを使用します。試行中はマウスカーソルが非表示になります。</p>
     <button id="start-experiment" class="primary">▶ 練習開始</button>
   </div>
 </section>
@@ -110,6 +135,7 @@
       <button id="start-main" class="primary">▶ 本実験開始 (Run 1)</button>
       <button id="redo-practice" class="secondary">↻ 練習をやり直す</button>
     </div>
+    <p class="caption">スペースキーで本実験を開始できます</p>
   </div>
 </section>
 
@@ -132,6 +158,11 @@
     <!-- Populated by JS: icon + label + explanation -->
   </div>
 
+  <!-- Small key-mapping reminder shown during runs -->
+  <div id="keymap-indicator" class="keymap-indicator hidden">
+    <!-- Populated by JS -->
+  </div>
+
   <audio id="audio-prime" preload="auto"></audio>
   <audio id="audio-target" preload="auto"></audio>
 </section>
@@ -142,9 +173,10 @@
 <section id="inter-run-rest" class="screen hidden">
   <div class="container">
     <h2>Run <span id="completed-run">1</span> 終了</h2>
-    <p>少し休憩してください。準備ができたら下のボタンで次のランへ。</p>
+    <p>少し休憩してください。準備ができたら次のランへ。</p>
     <p id="run-summary"></p>
-    <button id="next-run-btn" class="primary">▶ Begin Next Run</button>
+    <button id="next-run-btn" class="primary">▶ Begin Next Run (Space)</button>
+    <p class="caption">スペースキーでも次のランを開始できます</p>
   </div>
 </section>
 
@@ -164,18 +196,36 @@
 <section id="complete" class="screen hidden">
   <div class="container">
     <h1>🎉 実験終了</h1>
-    <p>お疲れさまでした。結果をダウンロードしてください。</p>
+    <p>お疲れさまでした。結果が <strong>自動的にダウンロード</strong> されました。</p>
 
-    <div class="actions">
-      <button id="download-results" class="primary">📥 結果 CSV をダウンロード</button>
-      <button id="download-events">📥 キーイベント CSV をダウンロード</button>
+    <div class="email-instruction">
+      <h3>📧 結果ファイルを実験者に送付してください</h3>
+      <p>ダウンロードした <strong>2 つの CSV ファイル</strong> を、下記の実験者宛にメール添付で送付してください:</p>
+      <p class="email-address">
+        <a href="mailto:komuro.4121@gmail.com?subject=Grammaticality%20Judgment%20Results&body=結果ファイル2つを添付します。">
+          komuro.4121@gmail.com
+        </a>
+        （クリックでメーラー起動）
+      </p>
+      <p class="caption">
+        ファイル名形式: <code>sub-{参加者ID}_form-{A|B}_{日時}_results.csv</code> ＋ <code>_key_events.csv</code><br>
+        ダウンロードフォルダにあります（ブラウザ設定によります）
+      </p>
     </div>
 
-    <h3>結果サマリ</h3>
-    <div id="summary-table"></div>
+    <details>
+      <summary>ダウンロードし直す / 結果を確認する</summary>
+      <div class="actions">
+        <button id="download-results" class="primary">📥 結果 CSV (再ダウンロード)</button>
+        <button id="download-events">📥 キーイベント CSV (再ダウンロード)</button>
+      </div>
 
-    <h3>全試行データ（最初の 20 行）</h3>
-    <div id="results-preview"></div>
+      <h4>結果サマリ</h4>
+      <div id="summary-table"></div>
+
+      <h4>全試行データ（最初の 20 行）</h4>
+      <div id="results-preview"></div>
+    </details>
 
     <button id="new-session" class="secondary">🔄 新規セッション開始</button>
   </div>
